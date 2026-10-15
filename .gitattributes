@@ -1,0 +1,5 @@
+* text=auto
+
+# Windows scripts: keep CRLF so cmd.exe and Windows PowerShell parse them reliably.
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
