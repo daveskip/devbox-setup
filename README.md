@@ -27,11 +27,11 @@ Run it as the developer who will use the PC (elevating through the UAC prompt), 
 | Shell | PowerShell 7, Windows Terminal | |
 | Linux | | `-IncludeWsl` turns on the Virtual Machine Platform Windows feature and installs WSL 2 + Ubuntu (latest LTS) as the default distro, with Git, GitHub CLI, the same .NET SDKs and Node.js major version as Windows, and build tools installed inside it. Git in Ubuntu uses your Windows sign-in for pushes. Also adds the VS Code WSL extension; `-WslDistro Ubuntu-24.04` picks another distro. Open Ubuntu once afterwards to create your Linux user |
 | Containers | | `-IncludeDocker` for Docker Desktop and the WSL 2 it runs on |
-
-**WSL and Docker on a PC that hasn't used WSL before:** Windows has to restart before WSL can run, and Ubuntu and Docker Desktop can't be installed until it does. The first run turns on WSL and tells you to restart. After restarting, run setup again with the same options: everything else is skipped and Ubuntu and Docker are installed. Also make sure CPU virtualization (Intel VT-x / AMD SVM) is on in the BIOS/UEFI; the script checks this and flags it, but can't change it.
 | Windows | Long paths enabled; PowerShell execution policy `RemoteSigned` for the current user, so `npm`/`pnpm` work in PowerShell | |
 | Git | `init.defaultBranch=main`, `core.longpaths=true`, your name and email | |
 | Anything else | | `-ExtraPackages Microsoft.AzureCLI,Bruno.Bruno` (any ID from `winget search`) |
+
+**WSL and Docker on a PC that hasn't used WSL before:** Windows has to restart before WSL can run, and Ubuntu and Docker Desktop can't be installed until it does. The first run turns on WSL and tells you to restart. After restarting, run setup again with the same options: everything else is skipped and Ubuntu and Docker are installed. Also make sure CPU virtualization (Intel VT-x / AMD SVM) is on in the BIOS/UEFI; the script checks this and flags it, but can't change it.
 
 To change what **every** machine gets, edit the `param(...)` defaults at the top of `setup-devbox.ps1`.
 
@@ -42,11 +42,23 @@ Add `-Upgrade` to update already-installed packages instead of skipping them. Ea
 - Visual Studio **Community** is free for individuals and small teams; larger organizations need Professional or Enterprise.
 - Docker Desktop needs a paid subscription for larger companies (over 250 employees or $10M revenue). The script accepts package agreements on your behalf, so check this before using `-IncludeDocker`.
 
-## Hosting it for your team
+## Getting it onto a new PC
 
-Put these files in a repo. On a new PC, from an elevated PowerShell:
+The repo is private, so you need to be signed in to a GitHub account that has access.
+
+**Easiest:** on [github.com/daveskip/devbox-setup](https://github.com/daveskip/devbox-setup), click **Code > Download ZIP**, extract it, and double-click `setup.cmd`. If Windows warns that the file came from the internet, choose **Run**.
+
+**From the command line:** a fresh PC has neither Git nor the GitHub CLI, so install those first (setup skips them later):
 
 ```powershell
-irm https://raw.githubusercontent.com/<you>/<repo>/main/setup-devbox.ps1 -OutFile $env:TEMP\setup-devbox.ps1
-powershell -ExecutionPolicy Bypass -File $env:TEMP\setup-devbox.ps1
+winget install --id Git.Git --exact
+winget install --id GitHub.cli --exact
+```
+
+Then, in a **new** terminal so they're on the PATH:
+
+```powershell
+gh auth login
+gh repo clone daveskip/devbox-setup C:\repos\devbox-setup
+C:\repos\devbox-setup\setup.cmd
 ```
