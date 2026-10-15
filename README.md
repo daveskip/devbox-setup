@@ -44,21 +44,16 @@ Add `-Upgrade` to update already-installed packages instead of skipping them. Ea
 
 ## Getting it onto a new PC
 
-The repo is private, so you need to be signed in to a GitHub account that has access.
-
 **Easiest:** on [github.com/daveskip/devbox-setup](https://github.com/daveskip/devbox-setup), click **Code > Download ZIP**, extract it, and double-click `setup.cmd`. If Windows warns that the file came from the internet, choose **Run**.
 
-**From the command line:** a fresh PC has neither Git nor the GitHub CLI, so install those first (setup skips them later):
+**One command:** paste into any PowerShell window; it asks for admin rights itself. Default options:
 
 ```powershell
-winget install --id Git.Git --exact
-winget install --id GitHub.cli --exact
+irm https://raw.githubusercontent.com/daveskip/devbox-setup/main/setup-devbox.ps1 -OutFile $env:TEMP\setup-devbox.ps1; Start-Process powershell -Verb RunAs -ArgumentList "-NoExit -ExecutionPolicy Bypass -File `"$env:TEMP\setup-devbox.ps1`""
 ```
 
-Then, in a **new** terminal so they're on the PATH:
+Everything (Visual Studio, WSL + Ubuntu, Docker, GitHub sign-in):
 
 ```powershell
-gh auth login
-gh repo clone daveskip/devbox-setup C:\repos\devbox-setup
-C:\repos\devbox-setup\setup.cmd
+irm https://raw.githubusercontent.com/daveskip/devbox-setup/main/setup-devbox.ps1 -OutFile $env:TEMP\setup-devbox.ps1; Start-Process powershell -Verb RunAs -ArgumentList "-NoExit -ExecutionPolicy Bypass -File `"$env:TEMP\setup-devbox.ps1`" -IncludeVisualStudio -IncludeWsl -IncludeDocker -GitHubLogin"
 ```
