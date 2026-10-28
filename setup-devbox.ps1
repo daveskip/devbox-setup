@@ -21,7 +21,7 @@
     .\setup-devbox.ps1 -GitUserName "Jane Doe" -GitUserEmail jane@contoso.com -GitHubLogin
 
 .EXAMPLE
-    .\setup-devbox.ps1 -IncludeVisualStudio -IncludeWsl -IncludeDocker -DotNetSdks 10,8 -NpmGlobalPackages pnpm -ExtraPackages Microsoft.AzureCLI,Bruno.Bruno
+    .\setup-devbox.ps1 -IncludeVisualStudio -IncludeWsl -IncludeDocker -IncludeDevDrive -DotNetSdks 10,8 -NpmGlobalPackages pnpm -ExtraPackages Microsoft.AzureCLI,Bruno.Bruno
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(
@@ -61,9 +61,9 @@ param(
     # Pass -SkipArmTools to leave them out.
     [switch]$SkipArmTools,
 
-    # A Dev Drive (ReFS volume with antivirus tuned for source code) is created by default, as a
-    # dynamically expanding VHDX that only takes the space it fills. Pass -SkipDevDrive to leave it out.
-    [switch]$SkipDevDrive,
+    # Also create a Dev Drive (ReFS volume with antivirus tuned for source code), as a
+    # dynamically expanding VHDX that only takes the space it fills. Windows 11 only.
+    [switch]$IncludeDevDrive,
 
     # Maximum size of the Dev Drive (50 GB minimum).
     [ValidateRange(50, 4096)]
@@ -320,13 +320,10 @@ else {
 # It lives in a VHDX (Windows 11 Home has no Hyper-V cmdlets, so diskpart creates it), and a
 # startup task re-attaches the VHDX after each restart.
 $devDriveTask = 'Mount Dev Drive'
-if ($SkipDevDrive) {
-    Add-Result 'Dev Drive' 'Skipped' '-SkipDevDrive'
-}
-elseif (-not (Get-Command Format-Volume).Parameters.ContainsKey('DevDrive')) {
+if ($IncludeDevDrive -and -not (Get-Command Format-Volume).Parameters.ContainsKey('DevDrive')) {
     Add-Result 'Dev Drive' 'Skipped' 'needs Windows 11 22H2 or later'
 }
-else {
+elseif ($IncludeDevDrive) {
     $image = Get-DiskImage -ImagePath $DevDriveVhdPath -ErrorAction SilentlyContinue
     if ($image -and $image.Attached) {
         $letter = ($image | Get-Disk | Get-Partition | Where-Object DriveLetter | Select-Object -First 1).DriveLetter

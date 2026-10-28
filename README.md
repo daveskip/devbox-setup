@@ -30,7 +30,7 @@ Run it as the developer who will use the PC (elevating through the UAC prompt), 
 | Linux | | `-IncludeWsl` turns on the Virtual Machine Platform Windows feature and installs WSL 2 + Ubuntu (latest LTS) as the default distro, with Git, GitHub CLI, the same .NET SDKs and Node.js major version as Windows, and build tools installed inside it. Git in Ubuntu uses your Windows sign-in for pushes. Also adds the VS Code WSL extension; `-WslDistro Ubuntu-24.04` picks another distro. Open Ubuntu once afterwards to create your Linux user |
 | Containers | | `-IncludeDocker` for Docker Desktop and the WSL 2 it runs on |
 | Windows | Long paths enabled; PowerShell execution policy `RemoteSigned` for the current user, so `npm`/`pnpm` work in PowerShell | |
-| Dev Drive | Windows 11: a 200 GB dynamically expanding [Dev Drive](https://learn.microsoft.com/windows/dev-drive/) (ReFS, antivirus tuned for builds) in `C:\DevDrive\DevDrive.vhdx`, on the first free letter from D, with a `repos` folder. A startup task re-attaches it after each restart | `-SkipDevDrive` to leave it out; `-DevDriveSizeGB`, `-DevDriveLetter`, `-DevDriveVhdPath` to change it |
+| Dev Drive | | `-IncludeDevDrive` (Windows 11) creates a 200 GB dynamically expanding [Dev Drive](https://learn.microsoft.com/windows/dev-drive/) (ReFS, antivirus tuned for builds) in `C:\DevDrive\DevDrive.vhdx`, on the first free letter from D, with a `repos` folder. A startup task re-attaches it after each restart. `-DevDriveSizeGB`, `-DevDriveLetter`, `-DevDriveVhdPath` change it |
 | Git | `init.defaultBranch=main`, `core.longpaths=true`, your name and email | |
 | Anything else | | `-ExtraPackages Bruno.Bruno,JetBrains.Rider` (any ID from `winget search`) |
 
