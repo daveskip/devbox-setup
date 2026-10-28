@@ -31,6 +31,9 @@ param(
     # .NET global tools to install.
     [string[]]$DotNetTools = @('dotnet-ef'),
 
+    # 'dotnet new' template packages to install.
+    [string[]]$DotNetTemplates = @('Aspire.ProjectTemplates'),
+
     # Install nvm-windows (switch Node versions per project) instead of the plain Node.js LTS installer.
     [switch]$UseNvm,
 
@@ -42,7 +45,10 @@ param(
         'dbaeumer.vscode-eslint',             # ESLint
         'esbenp.prettier-vscode',             # Prettier
         'editorconfig.editorconfig',          # EditorConfig
-        'github.vscode-pull-request-github'   # GitHub Pull Requests
+        'github.vscode-pull-request-github',  # GitHub Pull Requests
+        'ms-azuretools.vscode-azureresourcegroups', # Azure Resources
+        'ms-azuretools.vscode-bicep',         # Bicep
+        'amazonwebservices.aws-toolkit-vscode' # AWS Toolkit
     ),
 
     # Also install Visual Studio 2026 with the "ASP.NET and web development" workload.
@@ -54,6 +60,19 @@ param(
     # On ARM64 Windows, the Build Tools with the ARM64 C++ toolset are installed automatically.
     # Pass -SkipArmTools to leave them out.
     [switch]$SkipArmTools,
+
+    # A Dev Drive (ReFS volume with antivirus tuned for source code) is created by default, as a
+    # dynamically expanding VHDX that only takes the space it fills. Pass -SkipDevDrive to leave it out.
+    [switch]$SkipDevDrive,
+
+    # Maximum size of the Dev Drive (50 GB minimum).
+    [ValidateRange(50, 4096)]
+    [int]$DevDriveSizeGB = 200,
+
+    # Drive letter for the Dev Drive. Empty picks the first free letter from D.
+    [string]$DevDriveLetter,
+
+    [string]$DevDriveVhdPath = 'C:\DevDrive\DevDrive.vhdx',
 
     # Also install WSL 2 with a Linux distro (Ubuntu by default). Needs a restart if WSL wasn't already on.
     [switch]$IncludeWsl,
@@ -297,6 +316,79 @@ else {
     Add-Result 'PowerShell execution policy' 'Would set to RemoteSigned'
 }
 
+# Dev Drive: a ReFS volume whose antivirus scanning is tuned for builds and package restores.
+# It lives in a VHDX (Windows 11 Home has no Hyper-V cmdlets, so diskpart creates it), and a
+# startup task re-attaches the VHDX after each restart.
+$devDriveTask = 'Mount Dev Drive'
+if ($SkipDevDrive) {
+    Add-Result 'Dev Drive' 'Skipped' '-SkipDevDrive'
+}
+elseif (-not (Get-Command Format-Volume).Parameters.ContainsKey('DevDrive')) {
+    Add-Result 'Dev Drive' 'Skipped' 'needs Windows 11 22H2 or later'
+}
+else {
+    $image = Get-DiskImage -ImagePath $DevDriveVhdPath -ErrorAction SilentlyContinue
+    if ($image -and $image.Attached) {
+        $letter = ($image | Get-Disk | Get-Partition | Where-Object DriveLetter | Select-Object -First 1).DriveLetter
+        Add-Result 'Dev Drive' 'Already created' "${letter}: from $DevDriveVhdPath"
+    }
+    elseif ($image) {
+        if (Test-ShouldRun 'Dev Drive' "Attach $DevDriveVhdPath") {
+            $letter = (Mount-DiskImage -ImagePath $DevDriveVhdPath -PassThru | Get-Disk | Get-Partition | Where-Object DriveLetter | Select-Object -First 1).DriveLetter
+            Add-Result 'Dev Drive' 'Attached' "${letter}: from $DevDriveVhdPath"
+        }
+        else {
+            Add-Result 'Dev Drive' 'Would attach' $DevDriveVhdPath
+        }
+    }
+    else {
+        $letter = $DevDriveLetter.TrimEnd(':')
+        if (-not $letter) {
+            $used = @(Get-Volume | Where-Object DriveLetter | ForEach-Object { "$($_.DriveLetter)" }) + @(Get-PSDrive -PSProvider FileSystem | Select-Object -ExpandProperty Name)
+            $letter = [char[]](68..90) | ForEach-Object { "$_" } | Where-Object { $used -notcontains $_ } | Select-Object -First 1
+        }
+        $detail = "${letter}:, up to $DevDriveSizeGB GB, in $DevDriveVhdPath"
+        if (-not $letter) {
+            Add-Result 'Dev Drive' 'FAILED' 'no free drive letter'
+        }
+        elseif (Test-ShouldRun 'Dev Drive' "Create $detail") {
+            try {
+                New-Item -ItemType Directory -Force -Path (Split-Path $DevDriveVhdPath) | Out-Null
+                $diskpartFile = Join-Path $env:TEMP 'devbox-devdrive.txt'
+                Set-Content -Path $diskpartFile -Encoding Ascii -Value "create vdisk file=`"$DevDriveVhdPath`" maximum=$($DevDriveSizeGB * 1024) type=expandable"
+                diskpart.exe /s $diskpartFile | Out-Null
+                if ($LASTEXITCODE -ne 0) { throw "diskpart exit code $LASTEXITCODE" }
+                $disk = Mount-DiskImage -ImagePath $DevDriveVhdPath -PassThru -ErrorAction Stop | Get-Disk
+                Initialize-Disk -Number $disk.Number -PartitionStyle GPT -ErrorAction Stop
+                New-Partition -DiskNumber $disk.Number -UseMaximumSize -DriveLetter $letter -ErrorAction Stop | Out-Null
+                Format-Volume -DriveLetter $letter -DevDrive -NewFileSystemLabel 'Dev Drive' -Confirm:$false -Force -ErrorAction Stop | Out-Null
+                New-Item -ItemType Directory -Force -Path "${letter}:\repos" | Out-Null
+                Add-Result 'Dev Drive' 'Created' $detail
+            }
+            catch {
+                Add-Result 'Dev Drive' 'FAILED' $_.Exception.Message
+            }
+        }
+        else {
+            Add-Result 'Dev Drive' 'Would create' $detail
+        }
+    }
+
+    if (Get-ScheduledTask -TaskName $devDriveTask -ErrorAction SilentlyContinue) {
+        Add-Result 'Dev Drive startup task' 'Already registered'
+    }
+    elseif (Test-ShouldRun $devDriveTask 'Register startup task to attach the Dev Drive') {
+        $mountCommand = "Mount-DiskImage -ImagePath '$DevDriveVhdPath' -ErrorAction SilentlyContinue"
+        $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -NonInteractive -Command `"$mountCommand`""
+        Register-ScheduledTask -TaskName $devDriveTask -Action $action -Trigger (New-ScheduledTaskTrigger -AtStartup) `
+            -Principal (New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest) -Force | Out-Null
+        Add-Result 'Dev Drive startup task' 'Registered'
+    }
+    else {
+        Add-Result 'Dev Drive startup task' 'Would register'
+    }
+}
+
 #endregion
 
 #region Packages
@@ -322,6 +414,8 @@ Install-WingetPackage -Id 'Microsoft.PowerShell' -Name 'PowerShell 7'
 Install-WingetPackage -Id 'Microsoft.WindowsTerminal' -Name 'Windows Terminal'
 Install-WingetPackage -Id 'Microsoft.AzureCLI' -Name 'Azure CLI'
 Install-WingetPackage -Id 'Amazon.AWSCLI' -Name 'AWS CLI'
+Install-WingetPackage -Id 'Microsoft.Azd' -Name 'Azure Developer CLI'
+Install-WingetPackage -Id 'Hashicorp.Terraform' -Name 'Terraform'
 
 if ($IncludeVisualStudio) {
     Install-WingetPackage -Id "Microsoft.VisualStudio.$VisualStudioEdition" -Name "Visual Studio $VisualStudioEdition" -InstallArgs @(
@@ -560,6 +654,26 @@ else {
         }
         else {
             Add-Result $tool "Would $verb"
+        }
+    }
+
+    # 'dotnet new uninstall' with no argument lists the installed template packages.
+    $installedTemplates = dotnet new uninstall | Out-String
+    foreach ($template in $DotNetTemplates) {
+        $isInstalled = $installedTemplates -match "(?m)^\s+$([regex]::Escape($template))\s*$"
+        if ($isInstalled -and -not $Upgrade) {
+            Add-Result $template 'Already installed'
+            continue
+        }
+        # Installing an installed package replaces it with the latest version.
+        if (Test-ShouldRun $template 'dotnet new install') {
+            dotnet new install $template
+            if ($LASTEXITCODE -ne 0) { Add-Result $template 'FAILED' "dotnet new exit code $LASTEXITCODE" }
+            elseif ($isInstalled) { Add-Result $template 'Upgraded' }
+            else { Add-Result $template 'Installed' }
+        }
+        else {
+            Add-Result $template "Would $(if ($isInstalled) { 'upgrade' } else { 'install' })"
         }
     }
 }

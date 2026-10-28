@@ -21,15 +21,18 @@ Run it as the developer who will use the PC (elevating through the UAC prompt), 
 | Area | Default | Opt-in |
 |---|---|---|
 | Source control | Git, GitHub CLI | `-GitHubLogin` runs `gh auth login` at the end |
-| .NET | .NET 10 SDK (LTS), `dotnet-ef`, trusted HTTPS dev certificate | `-DotNetSdks 10,8` for more SDKs; `-IncludeVisualStudio` for VS 2026 with the ASP.NET workload (`-VisualStudioEdition Professional` etc.) |
+| .NET | .NET 10 SDK (LTS), `dotnet-ef`, .NET Aspire templates, trusted HTTPS dev certificate | `-DotNetSdks 10,8` for more SDKs; `-IncludeVisualStudio` for VS 2026 with the ASP.NET workload (`-VisualStudioEdition Professional` etc.) |
 | Node / React | Node.js LTS | `-UseNvm` for nvm-windows instead; `-NpmGlobalPackages pnpm` |
-| Editor | VS Code + C# Dev Kit, ESLint, Prettier, EditorConfig, GitHub Pull Requests | |
+| Editor | VS Code + C# Dev Kit, ESLint, Prettier, EditorConfig, GitHub Pull Requests, Azure Resources, Bicep, AWS Toolkit | |
 | Shell | PowerShell 7, Windows Terminal | |
+| Cloud | Azure CLI, Azure Developer CLI (`azd`), AWS CLI, Terraform | |
+| ARM64 PCs | Detected automatically: Visual Studio Build Tools with the ARM64 C++ toolset and Windows 11 SDK, for Native AOT and native dependencies | `-SkipArmTools` to leave them out |
 | Linux | | `-IncludeWsl` turns on the Virtual Machine Platform Windows feature and installs WSL 2 + Ubuntu (latest LTS) as the default distro, with Git, GitHub CLI, the same .NET SDKs and Node.js major version as Windows, and build tools installed inside it. Git in Ubuntu uses your Windows sign-in for pushes. Also adds the VS Code WSL extension; `-WslDistro Ubuntu-24.04` picks another distro. Open Ubuntu once afterwards to create your Linux user |
 | Containers | | `-IncludeDocker` for Docker Desktop and the WSL 2 it runs on |
 | Windows | Long paths enabled; PowerShell execution policy `RemoteSigned` for the current user, so `npm`/`pnpm` work in PowerShell | |
+| Dev Drive | Windows 11: a 200 GB dynamically expanding [Dev Drive](https://learn.microsoft.com/windows/dev-drive/) (ReFS, antivirus tuned for builds) in `C:\DevDrive\DevDrive.vhdx`, on the first free letter from D, with a `repos` folder. A startup task re-attaches it after each restart | `-SkipDevDrive` to leave it out; `-DevDriveSizeGB`, `-DevDriveLetter`, `-DevDriveVhdPath` to change it |
 | Git | `init.defaultBranch=main`, `core.longpaths=true`, your name and email | |
-| Anything else | | `-ExtraPackages Microsoft.AzureCLI,Bruno.Bruno` (any ID from `winget search`) |
+| Anything else | | `-ExtraPackages Bruno.Bruno,JetBrains.Rider` (any ID from `winget search`) |
 
 **WSL and Docker on a PC that hasn't used WSL before:** Windows has to restart before WSL can run, and Ubuntu and Docker Desktop can't be installed until it does. The first run turns on WSL and tells you to restart. After restarting, run setup again with the same options: everything else is skipped and Ubuntu and Docker are installed. Also make sure CPU virtualization (Intel VT-x / AMD SVM) is on in the BIOS/UEFI; the script checks this and flags it, but can't change it.
 
