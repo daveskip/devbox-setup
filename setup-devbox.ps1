@@ -51,6 +51,10 @@ param(
     [ValidateSet('Community', 'Professional', 'Enterprise')]
     [string]$VisualStudioEdition = 'Community',
 
+    # On ARM64 Windows, the Build Tools with the ARM64 C++ toolset are installed automatically.
+    # Pass -SkipArmTools to leave them out.
+    [switch]$SkipArmTools,
+
     # Also install WSL 2 with a Linux distro (Ubuntu by default). Needs a restart if WSL wasn't already on.
     [switch]$IncludeWsl,
 
@@ -320,6 +324,18 @@ Install-WingetPackage -Id 'Microsoft.WindowsTerminal' -Name 'Windows Terminal'
 if ($IncludeVisualStudio) {
     Install-WingetPackage -Id "Microsoft.VisualStudio.$VisualStudioEdition" -Name "Visual Studio $VisualStudioEdition" -InstallArgs @(
         '--override', '--wait --quiet --norestart --add Microsoft.VisualStudio.Workload.NetWeb --includeRecommended')
+}
+
+# ARM64 Windows: native builds (Native AOT, C++ dependencies) need the ARM64 C++ toolset.
+# winget picks ARM64 installers for .NET and the other packages above on its own.
+$isArm64 = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture -eq [System.Runtime.InteropServices.Architecture]::Arm64
+if ($isArm64 -and -not $SkipArmTools) {
+    Add-Result 'ARM64 machine' 'Detected' ([System.Runtime.InteropServices.RuntimeInformation]::OSDescription)
+    Install-WingetPackage -Id 'Microsoft.VisualStudio.2022.BuildTools' -Name 'Build Tools (ARM64 C++)' -InstallArgs @(
+        '--override', '--wait --quiet --norestart --add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 --add Microsoft.VisualStudio.Component.Windows11SDK.22621 --includeRecommended')
+}
+elseif ($isArm64) {
+    Add-Result 'ARM64 build tools' 'Skipped' '-SkipArmTools'
 }
 
 if ($IncludeWsl -or $IncludeDocker) {
