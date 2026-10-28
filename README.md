@@ -12,6 +12,7 @@ Sets up a Windows 10/11 PC for .NET and React development using winget. Safe to 
 Set-ExecutionPolicy -Scope Process Bypass
 .\setup-devbox.ps1 -WhatIf     # preview only, changes nothing
 .\setup-devbox.ps1 -GitUserName "Jane Doe" -GitUserEmail jane@contoso.com -GitHubLogin
+.\setup-devbox.ps1 -IncludeVisualStudio -IncludeWsl -IncludeDocker -GitHubLogin   # everything except the Dev Drive
 ```
 
 Run it as the developer who will use the PC (elevating through the UAC prompt), not under a separate admin account. Git config, VS Code extensions, .NET tools and the HTTPS dev certificate are all per-user.
@@ -55,7 +56,7 @@ Add `-Upgrade` to update already-installed packages instead of skipping them. Ea
 irm https://raw.githubusercontent.com/daveskip/devbox-setup/main/setup-devbox.ps1 -OutFile $env:TEMP\setup-devbox.ps1; Start-Process powershell -Verb RunAs -ArgumentList "-NoExit -ExecutionPolicy Bypass -File `"$env:TEMP\setup-devbox.ps1`""
 ```
 
-Everything (Visual Studio, WSL + Ubuntu, Docker, GitHub sign-in):
+Everything except the Dev Drive (Visual Studio, WSL + Ubuntu, Docker, GitHub sign-in):
 
 ```powershell
 irm https://raw.githubusercontent.com/daveskip/devbox-setup/main/setup-devbox.ps1 -OutFile $env:TEMP\setup-devbox.ps1; Start-Process powershell -Verb RunAs -ArgumentList "-NoExit -ExecutionPolicy Bypass -File `"$env:TEMP\setup-devbox.ps1`" -IncludeVisualStudio -IncludeWsl -IncludeDocker -GitHubLogin"
