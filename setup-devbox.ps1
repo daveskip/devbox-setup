@@ -320,6 +320,8 @@ Install-WingetPackage -Id 'Microsoft.VisualStudioCode' -Name 'VS Code' -InstallA
     '--override', '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /MERGETASKS=!runcode,addcontextmenufiles,addcontextmenufolders,associatewithfiles,addtopath')
 Install-WingetPackage -Id 'Microsoft.PowerShell' -Name 'PowerShell 7'
 Install-WingetPackage -Id 'Microsoft.WindowsTerminal' -Name 'Windows Terminal'
+Install-WingetPackage -Id 'Microsoft.AzureCLI' -Name 'Azure CLI'
+Install-WingetPackage -Id 'Amazon.AWSCLI' -Name 'AWS CLI'
 
 if ($IncludeVisualStudio) {
     Install-WingetPackage -Id "Microsoft.VisualStudio.$VisualStudioEdition" -Name "Visual Studio $VisualStudioEdition" -InstallArgs @(
